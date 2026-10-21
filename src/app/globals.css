@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme inline {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+
+  /* Brand: deep government green */
+  --color-brand-50: #eef7f2;
+  --color-brand-100: #d5ecdf;
+  --color-brand-200: #aed8c1;
+  --color-brand-500: #2f8a5c;
+  --color-brand-600: #1f7049;
+  --color-brand-700: #175a3b;
+  --color-brand-800: #124630;
+  --color-brand-900: #0d3524;
+  --color-brand-950: #082318;
+
+  --color-canvas: #f5f6f4;
+  --color-ink: #161b18;
+  --color-ink-2: #4a524d;
+  --color-ink-3: #7b847e;
+  --color-line: #e3e6e2;
+
+  /* Reserved status colours — always paired with an icon + label */
+  --color-st-pending: #fab219;
+  --color-st-progress: #2a78d6;
+  --color-st-complete: #0ca30c;
+}
+
+body {
+  background: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+@utility btn {
+  @apply inline-flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-4 disabled:cursor-not-allowed disabled:opacity-60;
+}
+
+/* Shared form-control look */
+@layer components {
+  .field-label {
+    @apply mb-1.5 block text-[13px] font-medium text-ink-2;
+  }
+  /* 16px text on phones stops iOS Safari from zooming in on focus */
+  .control {
+    @apply block w-full min-w-0 rounded-lg border border-line bg-white px-3 py-2.5 text-base text-ink sm:text-sm shadow-[0_1px_0_rgba(0,0,0,0.02)] outline-none transition placeholder:text-ink-3 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15 disabled:bg-canvas disabled:text-ink-3;
+  }
+  .control[aria-invalid="true"] {
+    @apply border-red-400 focus:border-red-500 focus:ring-red-500/15;
+  }
+  select.control {
+    appearance: none;
+    padding-right: 2.25rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%237b847e' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-size: 16px;
+    background-position: right 0.75rem center;
+    background-repeat: no-repeat;
+  }
+  /* iOS renders empty/auto-sized date inputs at odd heights */
+  input[type="date"].control {
+    min-height: 2.75rem;
+    -webkit-appearance: none;
+  }
+  input[type="date"].control::-webkit-date-and-time-value {
+    text-align: left;
+  }
+  .btn-primary {
+    @apply btn bg-brand-700 text-white shadow-sm hover:bg-brand-800 focus-visible:ring-brand-500/25;
+  }
+  .btn-secondary {
+    @apply btn border border-line bg-white text-ink hover:bg-canvas focus-visible:ring-brand-500/15;
+  }
+  .btn-danger {
+    @apply btn border border-red-200 bg-white text-red-700 hover:bg-red-50 focus-visible:ring-red-500/15;
+  }
+  .card {
+    @apply rounded-xl border border-line bg-white shadow-[0_1px_2px_rgba(16,24,20,0.04)];
+  }
+}
