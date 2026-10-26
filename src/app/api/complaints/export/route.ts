@@ -57,7 +57,8 @@ export async function GET(request: Request) {
 
   // Excel has no timezones: shift timestamps to Pakistan time (UTC+5).
   const pkt = (iso: string) => new Date(new Date(iso).getTime() + 5 * 60 * 60 * 1000);
-  const dateOnly = (d: string) => {
+  const dateOnly = (d: string | null) => {
+    if (!d) return null;
     const [y, m, day] = d.split("-").map(Number);
     return new Date(Date.UTC(y, m - 1, day));
   };

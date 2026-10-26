@@ -139,14 +139,14 @@ async function DashboardContent() {
                   <span className="hidden w-24 shrink-0 font-mono text-xs text-ink-3 sm:block">{formatReference(c.id)}</span>
                   <div className="min-w-0 flex-1">
                     <p className="font-mono text-[11px] text-ink-3 sm:hidden">{formatReference(c.id)}</p>
-                    <p className="truncate text-sm font-medium text-ink">{c.name}</p>
-                    <p className="truncate text-xs text-ink-3">{c.complaint}</p>
+                    <p className="truncate text-sm font-medium text-ink">{c.name ?? "—"}</p>
+                    <p className="truncate text-xs text-ink-3">{c.complaint ?? "—"}</p>
                     <p className="mt-1 truncate text-xs text-ink-2 sm:hidden">
-                      {c.tehsil} · {c.department} · {formatDate(c.complaint_date)}
+                      {c.tehsil ?? "—"} · {c.department ?? "—"} · {formatDate(c.complaint_date)}
                     </p>
                   </div>
-                  <span className="hidden w-28 shrink-0 text-xs text-ink-2 md:block">{c.department}</span>
-                  <span className="hidden w-16 shrink-0 text-xs text-ink-2 sm:block">{c.tehsil}</span>
+                  <span className="hidden w-28 shrink-0 text-xs text-ink-2 md:block">{c.department ?? "—"}</span>
+                  <span className="hidden w-16 shrink-0 text-xs text-ink-2 sm:block">{c.tehsil ?? "—"}</span>
                   <span className="hidden w-24 shrink-0 text-xs text-ink-3 sm:block">{formatDate(c.complaint_date)}</span>
                   <StatusBadge status={c.status} className="shrink-0" />
                 </Link>

@@ -79,19 +79,19 @@ async function ComplaintDetail({ params, searchParams }: PageProps<"/complaints/
           <section className="card p-5 sm:p-6">
             <h2 className="mb-4 font-semibold text-ink">Complainant</h2>
             <dl className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <Info Icon={User} label="Name" value={c.name} />
-              <Info Icon={Phone} label="Contact number" value={<a href={`tel:${c.contact_number}`} className="hover:text-brand-700">{c.contact_number}</a>} />
-              <Info Icon={Building2} label="Tehsil" value={c.tehsil} />
+              <Info Icon={User} label="Name" value={c.name ?? "—"} />
+              <Info Icon={Phone} label="Contact number" value={c.contact_number ? <a href={`tel:${c.contact_number}`} className="hover:text-brand-700">{c.contact_number}</a> : "—"} />
+              <Info Icon={Building2} label="Tehsil" value={c.tehsil ?? "—"} />
               <Info Icon={CalendarDays} label="Complaint date" value={formatDate(c.complaint_date)} />
             </dl>
           </section>
 
           <section className="card p-5 sm:p-6">
             <h2 className="mb-4 font-semibold text-ink">Complaint</h2>
-            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{c.complaint}</p>
+            <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-ink">{c.complaint ?? "—"}</p>
             <div className="mt-5 flex items-start gap-2 rounded-lg bg-canvas px-3 py-2.5 text-sm text-ink-2">
               <MapPin className="mt-0.5 size-4 shrink-0 text-ink-3" aria-hidden />
-              <span><span className="text-ink-3">Location:</span> {c.location}</span>
+              <span><span className="text-ink-3">Location:</span> {c.location ?? "—"}</span>
             </div>
             {c.remarks && (
               <div className="mt-5 border-t border-line pt-4">

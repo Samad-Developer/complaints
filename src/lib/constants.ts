@@ -12,6 +12,7 @@ export const DEPARTMENTS = [
   "AAC Razzar",
   "AAC Topi",
   "ACR Swabi",
+  "Other",
 ] as const;
 
 export const STATUSES = ["pending", "in_process", "complete"] as const;

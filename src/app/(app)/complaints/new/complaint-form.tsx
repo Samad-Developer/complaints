@@ -29,6 +29,7 @@ import {
 } from "@/lib/constants";
 import { formatBytes } from "@/lib/format";
 import type { ActionState, Attachment } from "@/lib/types";
+import { parseComplaint } from "@/lib/validation";
 
 const STATUS_OPTIONS: { value: ComplaintStatus; Icon: typeof Clock3; color: string }[] = [
   { value: "pending", Icon: Clock3, color: "text-amber-600" },
@@ -74,17 +75,28 @@ export function ComplaintForm({ today }: { today: string }) {
     const fd = new FormData(e.currentTarget);
     fd.delete("files");
 
+    // Validate before uploading anything; the server re-validates with the same schema.
+    const { errors: clientErrors } = parseComplaint(fd);
+    if (clientErrors) {
+      setState({ ok: false, message: "Please fix the highlighted fields.", fieldErrors: clientErrors });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      return;
+    }
+
     startTransition(async () => {
       const uploaded: Attachment[] = [];
       if (files.length) {
         setPhase("uploading");
         const supabase = createClient();
+
         for (const file of files) {
           const safeName = file.name.replace(/[^\w.\-]+/g, "_").slice(-100);
           const path = `${new Date().getFullYear()}/${crypto.randomUUID()}-${safeName}`;
+
           const { error } = await supabase.storage
             .from(ATTACHMENTS_BUCKET)
             .upload(path, file, { contentType: file.type, upsert: false });
+
           if (error) {
             if (uploaded.length) {
               await supabase.storage.from(ATTACHMENTS_BUCKET).remove(uploaded.map((a) => a.path));
@@ -95,6 +107,7 @@ export function ComplaintForm({ today }: { today: string }) {
             });
             return;
           }
+
           uploaded.push({ path, name: file.name, type: file.type, size: file.size });
         }
       }
@@ -102,6 +115,7 @@ export function ComplaintForm({ today }: { today: string }) {
       setPhase("saving");
       fd.set("attachments", JSON.stringify(uploaded));
       const result = await createComplaint(null, fd);
+      
       // Only reached when saving failed — success redirects to the complaint.
       if (!result || result.ok) return;
       if (uploaded.length) {
@@ -133,19 +147,19 @@ export function ComplaintForm({ today }: { today: string }) {
 
         {/* Complainant */}
         <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-          <Field label="Name" htmlFor="name" required error={errors.name}>
+          <Field label="Name" htmlFor="name" error={errors.name}>
             <input id="name" name="name" className="control" placeholder="Full name" autoComplete="off" {...invalid("name")} />
           </Field>
-          <Field label="Tehsil" htmlFor="tehsil" required error={errors.tehsil}>
+          <Field label="Tehsil" htmlFor="tehsil" error={errors.tehsil}>
             <select id="tehsil" name="tehsil" className="control" defaultValue="" {...invalid("tehsil")}>
-              <option value="" disabled>Select tehsil</option>
+              <option value="">Select tehsil</option>
               {TEHSILS.map((t) => <option key={t} value={t}>{t}</option>)}
             </select>
           </Field>
-          <Field label="Contact number" htmlFor="contact_number" required error={errors.contact_number}>
-            <input id="contact_number" name="contact_number" type="tel" inputMode="tel" className="control" placeholder="03XX-XXXXXXX" {...invalid("contact_number")} />
+          <Field label="Contact number" htmlFor="contact_number" error={errors.contact_number}>
+            <input id="contact_number" name="contact_number" type="tel" inputMode="tel" className="control" placeholder="03XXXXXXXXX" maxLength={15} {...invalid("contact_number")} />
           </Field>
-          <Field label="Date" htmlFor="complaint_date" required error={errors.complaint_date}>
+          <Field label="Date" htmlFor="complaint_date" error={errors.complaint_date}>
             <input id="complaint_date" name="complaint_date" type="date" className="control" defaultValue={today} max={today} {...invalid("complaint_date")} />
           </Field>
         </div>
@@ -154,10 +168,10 @@ export function ComplaintForm({ today }: { today: string }) {
 
         {/* Complaint */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-2">
-          <Field label="Complaint" htmlFor="complaint" required error={errors.complaint} className="lg:row-span-2">
+          <Field label="Complaint" htmlFor="complaint" error={errors.complaint} className="lg:row-span-2">
             <textarea id="complaint" name="complaint" rows={7} className="control h-full min-h-40 resize-y" placeholder="Describe the complaint in detail…" {...invalid("complaint")} />
           </Field>
-          <Field label="Complaint location" htmlFor="location" required error={errors.location}>
+          <Field label="Complaint location" htmlFor="location" error={errors.location}>
             <input id="location" name="location" className="control" placeholder="Village / mohalla / landmark" {...invalid("location")} />
           </Field>
           <Field label="Remarks" htmlFor="remarks" error={errors.remarks}>
@@ -169,9 +183,9 @@ export function ComplaintForm({ today }: { today: string }) {
 
         {/* Department + status */}
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-3">
-          <Field label="Concerned department" htmlFor="department" required error={errors.department}>
+          <Field label="Concerned department" htmlFor="department" error={errors.department}>
             <select id="department" name="department" className="control" defaultValue="" {...invalid("department")}>
-              <option value="" disabled>Select department</option>
+              <option value="">Select department</option>
               {DEPARTMENTS.map((d) => <option key={d} value={d}>{d}</option>)}
             </select>
           </Field>
@@ -273,10 +287,7 @@ export function ComplaintForm({ today }: { today: string }) {
       </div>
 
       {/* Footer */}
-      <div className="flex flex-col-reverse gap-3 border-t border-line bg-canvas/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
-        <p className="text-xs text-ink-3">
-          <span className="text-red-600">*</span> Required fields
-        </p>
+      <div className="flex flex-col-reverse gap-3 border-t border-line bg-canvas/60 px-4 py-4 sm:flex-row sm:items-center sm:justify-end sm:px-8">
         <div className="flex gap-3">
           <Link href="/complaints" className="btn-secondary flex-1 sm:flex-none">Cancel</Link>
           <button type="submit" disabled={pending} className="btn-primary flex-1 sm:min-w-48 sm:flex-none">

@@ -8,10 +8,10 @@ import {
   DEPARTMENTS,
   MAX_FILES,
   STATUSES,
-  TEHSILS,
   type ComplaintStatus,
 } from "@/lib/constants";
 import type { ActionState, Attachment } from "@/lib/types";
+import { parseComplaint } from "@/lib/validation";
 
 const text = (fd: FormData, key: string) => String(fd.get(key) ?? "").trim();
 
@@ -43,37 +43,6 @@ export async function signOut() {
 
 // ---------- Complaints ----------
 
-function validateComplaint(formData: FormData) {
-  const values = {
-    name: text(formData, "name"),
-    tehsil: text(formData, "tehsil"),
-    contact_number: text(formData, "contact_number"),
-    complaint_date: text(formData, "complaint_date"),
-    complaint: text(formData, "complaint"),
-    location: text(formData, "location"),
-    remarks: text(formData, "remarks"),
-    department: text(formData, "department"),
-    status: text(formData, "status") || "pending",
-  };
-
-  const errors: Record<string, string> = {};
-  if (values.name.length < 2) errors.name = "Enter the complainant's name.";
-  if (!TEHSILS.includes(values.tehsil as (typeof TEHSILS)[number]))
-    errors.tehsil = "Select a tehsil.";
-  const digits = values.contact_number.replace(/\D/g, "");
-  if (digits.length < 10 || digits.length > 13 || /[^\d\s+\-]/.test(values.contact_number))
-    errors.contact_number = "Enter a valid contact number, e.g. 0300-1234567.";
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(values.complaint_date))
-    errors.complaint_date = "Select a date.";
-  if (values.complaint.length < 5) errors.complaint = "Describe the complaint (at least 5 characters).";
-  if (values.location.length < 2) errors.location = "Enter where the issue is.";
-  if (!DEPARTMENTS.includes(values.department as (typeof DEPARTMENTS)[number]))
-    errors.department = "Select the concerned department.";
-  if (!STATUSES.includes(values.status as ComplaintStatus)) errors.status = "Select a status.";
-
-  return { values, errors };
-}
-
 function parseAttachments(formData: FormData): Attachment[] {
   try {
     const raw = JSON.parse(String(formData.get("attachments") ?? "[]"));
@@ -95,20 +64,19 @@ function parseAttachments(formData: FormData): Attachment[] {
   }
 }
 
-export async function createComplaint(
-  _: ActionState,
-  formData: FormData,
-): Promise<ActionState> {
-  const { values, errors } = validateComplaint(formData);
-  if (Object.keys(errors).length) {
+export async function createComplaint( _: ActionState, formData: FormData): Promise<ActionState> {
+
+  const { data: values, errors } = parseComplaint(formData);
+  if (!values) {
     return { ok: false, message: "Please fix the highlighted fields.", fieldErrors: errors };
   }
-
   const attachments = parseAttachments(formData);
+  
   const supabase = await createClient();
+  
   const { data, error } = await supabase
     .from("complaints")
-    .insert({ ...values, remarks: values.remarks || null, attachments })
+    .insert({ ...values, attachments })
     .select("id")
     .single();
 
@@ -137,14 +105,14 @@ export async function updateComplaint(
   if (!Number.isInteger(id) || id < 1) return { ok: false, message: "Invalid complaint." };
   if (!STATUSES.includes(status as ComplaintStatus))
     return { ok: false, message: "Select a valid status." };
-  if (!DEPARTMENTS.includes(department as (typeof DEPARTMENTS)[number]))
+  if (department && !DEPARTMENTS.includes(department as (typeof DEPARTMENTS)[number]))
     return { ok: false, message: "Select a valid department." };
   if (remarks.length > 2000) return { ok: false, message: "Remarks are too long." };
 
   const supabase = await createClient();
   const { error } = await supabase
     .from("complaints")
-    .update({ status, department, remarks: remarks || null })
+    .update({ status, department: department || null, remarks: remarks || null })
     .eq("id", id);
 
   if (error) return { ok: false, message: `Could not update: ${error.message}` };

@@ -6,7 +6,8 @@ export function todayInPakistan() {
 }
 
 /** Formats a YYYY-MM-DD date column, e.g. "12 Mar 2026". */
-export function formatDate(value: string) {
+export function formatDate(value: string | null) {
+  if (!value) return "—";
   const [y, m, d] = value.split("-").map(Number);
   return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("en-GB", {
     day: "numeric",

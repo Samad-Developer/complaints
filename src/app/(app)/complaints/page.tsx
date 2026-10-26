@@ -106,13 +106,13 @@ async function ComplaintsTable({ searchParams }: { searchParams: SearchParams })
                   </Link>
                 </td>
                 <td className="px-5 py-3.5">
-                  <p className="font-medium text-ink">{c.name}</p>
+                  <p className="font-medium text-ink">{c.name ?? "—"}</p>
                   <p className="text-xs text-ink-3">{c.contact_number}</p>
                 </td>
                 <td className="max-w-xs px-5 py-3.5">
-                  <p className="truncate text-ink-2">{c.complaint}</p>
+                  <p className="truncate text-ink-2">{c.complaint ?? "—"}</p>
                   <p className="flex items-center gap-2 truncate text-xs text-ink-3">
-                    {c.location}
+                    {c.location ?? "—"}
                     {c.attachments?.length > 0 && (
                       <span className="inline-flex items-center gap-0.5" title={`${c.attachments.length} attachment(s)`}>
                         <Paperclip className="size-3" aria-hidden />
@@ -121,8 +121,8 @@ async function ComplaintsTable({ searchParams }: { searchParams: SearchParams })
                     )}
                   </p>
                 </td>
-                <td className="px-5 py-3.5 text-ink-2">{c.tehsil}</td>
-                <td className="whitespace-nowrap px-5 py-3.5 text-ink-2">{c.department}</td>
+                <td className="px-5 py-3.5 text-ink-2">{c.tehsil ?? "—"}</td>
+                <td className="whitespace-nowrap px-5 py-3.5 text-ink-2">{c.department ?? "—"}</td>
                 <td className="whitespace-nowrap px-5 py-3.5 text-ink-2">{formatDate(c.complaint_date)}</td>
                 <td className="px-5 py-3.5"><StatusBadge status={c.status} /></td>
               </tr>
@@ -139,13 +139,13 @@ async function ComplaintsTable({ searchParams }: { searchParams: SearchParams })
               <div className="flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="font-mono text-xs text-ink-3">{formatReference(c.id)}</p>
-                  <p className="mt-0.5 font-medium text-ink">{c.name}</p>
+                  <p className="mt-0.5 font-medium text-ink">{c.name ?? "—"}</p>
                 </div>
                 <StatusBadge status={c.status} />
               </div>
-              <p className="mt-2 line-clamp-2 text-sm text-ink-2">{c.complaint}</p>
+              <p className="mt-2 line-clamp-2 text-sm text-ink-2">{c.complaint ?? "—"}</p>
               <p className="mt-2 text-xs text-ink-3">
-                {c.tehsil} · {c.department} · {formatDate(c.complaint_date)}
+                {c.tehsil ?? "—"} · {c.department ?? "—"} · {formatDate(c.complaint_date)}
               </p>
             </Link>
           </li>

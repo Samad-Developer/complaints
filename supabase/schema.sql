@@ -11,14 +11,15 @@ exception when duplicate_object then null; end $$;
 -- ---------- Complaints table ----------
 create table if not exists public.complaints (
   id              bigint generated always as identity primary key,
-  name            text not null check (char_length(name) between 2 and 120),
-  tehsil          text not null check (tehsil in ('Topi', 'Swabi', 'Lahor', 'Razzar')),
-  contact_number  text not null check (char_length(contact_number) between 7 and 20),
-  complaint_date  date not null default current_date,
-  complaint       text not null check (char_length(complaint) between 5 and 5000),
-  location        text not null check (char_length(location) between 2 and 300),
+  -- All complaint details are optional; blanks are stored as null.
+  name            text check (char_length(name) <= 120),
+  tehsil          text check (tehsil in ('Topi', 'Swabi', 'Lahor', 'Razzar')),
+  contact_number  text check (char_length(contact_number) <= 20),
+  complaint_date  date,
+  complaint       text check (char_length(complaint) <= 5000),
+  location        text check (char_length(location) <= 300),
   remarks         text check (char_length(remarks) <= 2000),
-  department      text not null,
+  department      text,
   status          public.complaint_status not null default 'pending',
   attachments     jsonb not null default '[]'::jsonb,
   created_by      uuid references auth.users (id) on delete set null default auth.uid(),
@@ -77,11 +78,11 @@ as $$
     ),
     'by_tehsil', (
       select coalesce(json_object_agg(tehsil, n), '{}'::json)
-      from (select tehsil, count(*) as n from complaints group by tehsil) t
+      from (select tehsil, count(*) as n from complaints where tehsil is not null group by tehsil) t
     ),
     'by_department', (
       select coalesce(json_object_agg(department, n), '{}'::json)
-      from (select department, count(*) as n from complaints group by department) d
+      from (select department, count(*) as n from complaints where department is not null group by department) d
     ),
     'daily', (
       select coalesce(json_agg(json_build_object('day', day, 'count', n) order by day), '[]'::json)

@@ -9,14 +9,14 @@ export type Attachment = {
 
 export type Complaint = {
   id: number;
-  name: string;
-  tehsil: string;
-  contact_number: string;
-  complaint_date: string;
-  complaint: string;
-  location: string;
+  name: string | null;
+  tehsil: string | null;
+  contact_number: string | null;
+  complaint_date: string | null;
+  complaint: string | null;
+  location: string | null;
   remarks: string | null;
-  department: string;
+  department: string | null;
   status: ComplaintStatus;
   attachments: Attachment[];
   created_by: string | null;

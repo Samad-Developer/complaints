@@ -14,7 +14,7 @@ export function UpdateForm({
 }: {
   id: number;
   status: ComplaintStatus;
-  department: string;
+  department: string | null;
   remarks: string | null;
 }) {
   const [state, formAction, pending] = useActionState(updateComplaint, null);
@@ -30,7 +30,8 @@ export function UpdateForm({
         </select>
       </Field>
       <Field label="Concerned department" htmlFor="department">
-        <select id="department" name="department" defaultValue={department} className="control">
+        <select id="department" name="department" defaultValue={department ?? ""} className="control">
+          <option value="">Not assigned</option>
           {DEPARTMENTS.map((d) => (
             <option key={d} value={d}>{d}</option>
           ))}

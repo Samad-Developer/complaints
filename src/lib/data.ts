@@ -148,11 +148,14 @@ export async function getComplaint(id: number) {
 
   const complaint = data as Complaint;
   const paths = complaint.attachments.map((a) => a.path);
+
   let urls: Record<string, string> = {};
   if (paths.length) {
+
     const { data: signed } = await supabase.storage
       .from(ATTACHMENTS_BUCKET)
       .createSignedUrls(paths, 60 * 60);
+      
     urls = Object.fromEntries(
       (signed ?? [])
         .filter((s) => s.signedUrl && s.path)
