@@ -51,7 +51,11 @@ export async function proxy(request: NextRequest) {
   }
 
   if (isSignedIn && pathname.startsWith("/login")) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
+    // Honour ?next= so links opened from outside (e.g. Excel, which checks the
+    // link without the session first) still land on the page they point to.
+    const next = request.nextUrl.searchParams.get("next") ?? "";
+    const target = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    return NextResponse.redirect(new URL(target, request.url));
   }
 
   return response;

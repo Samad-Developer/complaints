@@ -13,15 +13,13 @@ const THUMB_W = 120;
 const THUMB_H = 90;
 const IMAGE_ROW_HEIGHT = 88; // points (~117px), fits THUMB_H plus an "Open full image" link
 const DOWNLOAD_CONCURRENCY = 8;
+const IMAGE_LINK_EXPIRY = 365 * 24 * 60 * 60; // seconds; image links in the file work for a year
 const LINK_FONT = { color: { argb: "FF0563C1" }, underline: true };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-type Thumb = { buffer: Buffer; width: number; height: number; index: number };
+type Thumb = { buffer: Buffer; width: number; height: number; path: string };
 
-async function thumbnail(
-  supabase: Supabase,
-  { a, index }: { a: Attachment; index: number },
-): Promise<Thumb | null> {
+async function thumbnail(supabase: Supabase, a: Attachment): Promise<Thumb | null> {
   try {
     const { data, error } = await supabase.storage.from(ATTACHMENTS_BUCKET).download(a.path);
     if (error || !data) return null;
@@ -36,7 +34,7 @@ async function thumbnail(
       buffer,
       width: Math.round(info.width * scale),
       height: Math.round(info.height * scale),
-      index,
+      path: a.path,
     };
   } catch {
     return null; // a broken or missing file should not fail the whole export
@@ -83,11 +81,21 @@ export async function GET(request: Request) {
   }
 
   // Fetch and shrink every image attachment up front, a few at a time.
-  // Keep each image's position in the attachments array for its /attachments link.
-  const images = rows.map((c) =>
-    c.attachments.map((a, index) => ({ a, index })).filter(({ a }) => a.type.startsWith("image/")),
-  );
-  const thumbs = await mapLimit(images.flat(), DOWNLOAD_CONCURRENCY, (img) => thumbnail(supabase, img));
+  const images = rows.map((c) => c.attachments.filter((a) => a.type.startsWith("image/")));
+  const thumbs = await mapLimit(images.flat(), DOWNLOAD_CONCURRENCY, (a) => thumbnail(supabase, a));
+
+  // Direct links to the full-size images. Excel checks a link without the user's
+  // session before opening it, so links must work without signing in to the app.
+  const fullUrls: Record<string, string> = {};
+  const paths = thumbs.filter((x): x is Thumb => x !== null).map((x) => x.path);
+  for (let i = 0; i < paths.length; i += 1000) {
+    const { data: signed } = await supabase.storage
+      .from(ATTACHMENTS_BUCKET)
+      .createSignedUrls(paths.slice(i, i + 1000), IMAGE_LINK_EXPIRY);
+    for (const s of signed ?? []) {
+      if (s.path && s.signedUrl) fullUrls[s.path] = s.signedUrl;
+    }
+  }
   const thumbsByRow: Thumb[][] = [];
   let t = 0;
   for (const list of images) {
@@ -167,15 +175,16 @@ export async function GET(request: Request) {
     row.height = Math.max(IMAGE_ROW_HEIGHT, lines * 15);
 
     rowThumbs.forEach((thumb, k) => {
-      const link = `${url.origin}/attachments/${c.id}/${thumb.index}`;
+      const link = fullUrls[thumb.path];
       const id = wb.addImage({ buffer: thumb.buffer as unknown as ExcelJS.Buffer, extension: "jpeg" });
       ws.addImage(id, {
         // Anchors are 0-based; the small offset pads the image inside its cell.
         tl: { col: firstImageCol - 1 + k + 0.05, row: row.number - 1 + 0.05 },
         ext: { width: thumb.width, height: thumb.height },
         editAs: "oneCell",
-        hyperlinks: { hyperlink: link, tooltip: "Open full image" },
+        ...(link && { hyperlinks: { hyperlink: link, tooltip: "Open full image" } }),
       });
+      if (!link) return;
       // Text link under the thumbnail, for viewers that ignore image hyperlinks.
       const cell = row.getCell(firstImageCol + k);
       cell.value = { text: "Open full image", hyperlink: link };
