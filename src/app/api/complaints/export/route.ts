@@ -11,13 +11,17 @@ const BRAND = "FF124630";
 // Thumbnail box as displayed in the sheet (px). Images are stored at 2x for sharpness.
 const THUMB_W = 120;
 const THUMB_H = 90;
-const IMAGE_ROW_HEIGHT = 74; // points (~98px), fits THUMB_H plus padding
+const IMAGE_ROW_HEIGHT = 88; // points (~117px), fits THUMB_H plus an "Open full image" link
 const DOWNLOAD_CONCURRENCY = 8;
+const LINK_FONT = { color: { argb: "FF0563C1" }, underline: true };
 
 type Supabase = Awaited<ReturnType<typeof createClient>>;
-type Thumb = { buffer: Buffer; width: number; height: number };
+type Thumb = { buffer: Buffer; width: number; height: number; index: number };
 
-async function thumbnail(supabase: Supabase, a: Attachment): Promise<Thumb | null> {
+async function thumbnail(
+  supabase: Supabase,
+  { a, index }: { a: Attachment; index: number },
+): Promise<Thumb | null> {
   try {
     const { data, error } = await supabase.storage.from(ATTACHMENTS_BUCKET).download(a.path);
     if (error || !data) return null;
@@ -28,7 +32,12 @@ async function thumbnail(supabase: Supabase, a: Attachment): Promise<Thumb | nul
       .jpeg({ quality: 70 })
       .toBuffer({ resolveWithObject: true });
     const scale = Math.min(1, THUMB_W / info.width, THUMB_H / info.height);
-    return { buffer, width: Math.round(info.width * scale), height: Math.round(info.height * scale) };
+    return {
+      buffer,
+      width: Math.round(info.width * scale),
+      height: Math.round(info.height * scale),
+      index,
+    };
   } catch {
     return null; // a broken or missing file should not fail the whole export
   }
@@ -74,8 +83,11 @@ export async function GET(request: Request) {
   }
 
   // Fetch and shrink every image attachment up front, a few at a time.
-  const images = rows.map((c) => c.attachments.filter((a) => a.type.startsWith("image/")));
-  const thumbs = await mapLimit(images.flat(), DOWNLOAD_CONCURRENCY, (a) => thumbnail(supabase, a));
+  // Keep each image's position in the attachments array for its /attachments link.
+  const images = rows.map((c) =>
+    c.attachments.map((a, index) => ({ a, index })).filter(({ a }) => a.type.startsWith("image/")),
+  );
+  const thumbs = await mapLimit(images.flat(), DOWNLOAD_CONCURRENCY, (img) => thumbnail(supabase, img));
   const thumbsByRow: Thumb[][] = [];
   let t = 0;
   for (const list of images) {
@@ -141,7 +153,7 @@ export async function GET(request: Request) {
       created: pkt(c.created_at),
       updated: pkt(c.updated_at),
     });
-    row.getCell("ref").font = { color: { argb: "FF0563C1" }, underline: true };
+    row.getCell("ref").font = LINK_FONT;
 
     const rowThumbs = thumbsByRow[i];
     if (!rowThumbs.length) return;
@@ -155,13 +167,19 @@ export async function GET(request: Request) {
     row.height = Math.max(IMAGE_ROW_HEIGHT, lines * 15);
 
     rowThumbs.forEach((thumb, k) => {
+      const link = `${url.origin}/attachments/${c.id}/${thumb.index}`;
       const id = wb.addImage({ buffer: thumb.buffer as unknown as ExcelJS.Buffer, extension: "jpeg" });
       ws.addImage(id, {
         // Anchors are 0-based; the small offset pads the image inside its cell.
         tl: { col: firstImageCol - 1 + k + 0.05, row: row.number - 1 + 0.05 },
         ext: { width: thumb.width, height: thumb.height },
         editAs: "oneCell",
+        hyperlinks: { hyperlink: link, tooltip: "Open full image" },
       });
+      // Text link under the thumbnail, for viewers that ignore image hyperlinks.
+      const cell = row.getCell(firstImageCol + k);
+      cell.value = { text: "Open full image", hyperlink: link };
+      cell.font = LINK_FONT;
     });
   });
 
@@ -178,8 +196,10 @@ export async function GET(request: Request) {
   const border = { style: "thin" as const, color: { argb: "FFE3E6E2" } };
   ws.eachRow((row, n) => {
     if (n === 1) return;
-    row.eachCell({ includeEmpty: true }, (cell) => {
-      cell.alignment = { vertical: "top", wrapText: true };
+    row.eachCell({ includeEmpty: true }, (cell, col) => {
+      // Image cells keep their link at the bottom, clear of the thumbnail.
+      const isImage = col >= firstImageCol && col < firstImageCol + imageCols;
+      cell.alignment = { vertical: isImage ? "bottom" : "top", wrapText: true };
       cell.border = { top: border, bottom: border, left: border, right: border };
     });
   });
